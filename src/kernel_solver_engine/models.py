@@ -8,6 +8,8 @@ import numpy as np
 
 KernelPresetName = Literal[
     "fast_preview",
+    "focus_only_fast",
+    "focus_only_mainline",
     "external_default",
     "validation_reference",
     "projector_advanced",

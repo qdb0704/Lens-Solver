@@ -11,6 +11,18 @@ def make_named_preset(name: KernelPresetName) -> SolverToggles:
             ordered_interface_subcell_count=0,
             use_lateral_sidewall_trace_projection=False,
         )
+    if name == "focus_only_fast":
+        return SolverToggles(
+            ordered_interface_subcell_count=0,
+            use_lateral_sidewall_trace_projection=False,
+            use_internal_cavity_correction=False,
+        )
+    if name == "focus_only_mainline":
+        return SolverToggles(
+            ordered_interface_subcell_count=2,
+            use_lateral_sidewall_trace_projection=False,
+            use_internal_cavity_correction=False,
+        )
     if name == "external_default":
         return SolverToggles(
             ordered_interface_subcell_count=2,

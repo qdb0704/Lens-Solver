@@ -8,6 +8,16 @@ from .json_api import dump_json, load_request_json, report_to_dict, response_to_
 from .presets import make_large_lens_example_request
 
 
+PRESET_CHOICES = (
+    "fast_preview",
+    "focus_only_fast",
+    "focus_only_mainline",
+    "external_default",
+    "validation_reference",
+    "projector_advanced",
+)
+
+
 def _build_request(args: argparse.Namespace):
     if args.request_json is not None:
         return load_request_json(args.request_json)
@@ -19,13 +29,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     solve_parser = subparsers.add_parser("solve", help="Solve one request.")
-    solve_parser.add_argument("--preset", choices=("fast_preview", "external_default", "validation_reference", "projector_advanced"), default="external_default")
+    solve_parser.add_argument("--preset", choices=PRESET_CHOICES, default="external_default")
     solve_parser.add_argument("--request-json")
     solve_parser.add_argument("--out")
     solve_parser.add_argument("--include-field-arrays", action="store_true")
 
     compare_parser = subparsers.add_parser("compare-orders", help="Run the 2-vs-4 validation gate.")
-    compare_parser.add_argument("--preset", choices=("fast_preview", "external_default", "validation_reference", "projector_advanced"), default="external_default")
+    compare_parser.add_argument("--preset", choices=PRESET_CHOICES, default="external_default")
     compare_parser.add_argument("--request-json")
     compare_parser.add_argument("--candidate-order", type=int, default=2)
     compare_parser.add_argument("--reference-order", type=int, default=4)

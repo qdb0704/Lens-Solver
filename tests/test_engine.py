@@ -48,6 +48,12 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         self.assertEqual(request.toggles.ordered_interface_subcell_count, 2)
         self.assertFalse(request.toggles.use_lateral_sidewall_trace_projection)
 
+    def test_focus_only_mainline_turns_off_internal_cavity(self) -> None:
+        request = make_large_lens_example_request(preset="focus_only_mainline")
+        self.assertEqual(request.toggles.ordered_interface_subcell_count, 2)
+        self.assertFalse(request.toggles.use_lateral_sidewall_trace_projection)
+        self.assertFalse(request.toggles.use_internal_cavity_correction)
+
     def test_public_loader_uses_explicit_adapter_contract(self) -> None:
         backend = load_backend()
         self.assertEqual(backend.module_name, "tests.fake_backend")
