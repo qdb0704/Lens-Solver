@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kernel-solver-engine"
+version = "0.2.0"
+description = "Public interface package for a proprietary finite-lens kernel solver."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "SolverModule Team"}]
+dependencies = ["numpy>=1.26"]
+keywords = ["solver", "lens", "electromagnetics", "kernel", "engine"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+build = ["build>=1.2"]
+
+[project.scripts]
+kernel-solver-engine = "kernel_solver_engine.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
