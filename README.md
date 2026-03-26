@@ -77,6 +77,35 @@ report = engine.compare_orders(request, candidate_order=2, reference_order=4)
 print(report.as_dict())
 ```
 
+## Nonuniform Panorama Rendering
+
+Private-backend diagnostics may save panorama arrays on a nonuniform `z` grid,
+for example when air-side slices, lens slices, and post-lens scans use
+different step sizes. In that case, do not render `z_all_lambda` with `imshow`,
+because `imshow` assumes uniform pixel spacing and can visibly misalign the
+drawn lens outline and field map.
+
+Use the exported helper:
+
+```python
+from kernel_solver_engine import pcolormesh_from_centers
+```
+
+or the example script:
+
+```powershell
+python examples/render_nonuniform_panorama_npz.py --npz path\to\run.npz
+```
+
+The script expects the private diagnostic `.npz` to contain at least:
+
+- `x_lambda`
+- `z_all_lambda`
+- `centerline_ey_xz`
+
+and will overlay `front_curve_lambda`, `back_curve_lambda`, `front_edge_lambda`,
+`back_edge_lambda`, and `lens_radius_lambda` when present.
+
 ## CLI Usage
 
 ```bash

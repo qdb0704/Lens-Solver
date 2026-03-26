@@ -19,6 +19,7 @@ classifiers = [
 
 [project.optional-dependencies]
 build = ["build>=1.2"]
+plotting = ["matplotlib>=3.8"]
 
 [project.scripts]
 kernel-solver-engine = "kernel_solver_engine.cli:main"
