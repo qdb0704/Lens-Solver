@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import inspect
 import time
 
 import numpy as np
@@ -78,10 +79,25 @@ def _relative_l2(reference: np.ndarray, candidate: np.ndarray) -> float:
     return float(np.linalg.norm(candidate - reference) / (np.linalg.norm(reference) + 1e-30))
 
 
+def _callable_accepts_kwarg(config_type: type, kwarg_name: str) -> bool:
+    dataclass_fields = getattr(config_type, "__dataclass_fields__", {})
+    if kwarg_name in dataclass_fields:
+        return True
+    try:
+        parameters = inspect.signature(config_type).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    for parameter in parameters:
+        if parameter.kind is inspect.Parameter.VAR_KEYWORD:
+            return True
+        if parameter.name == kwarg_name:
+            return True
+    return False
+
+
 def _inject_supported_solver_baseline_kwargs(config_type: type, kwargs: dict[str, object]) -> dict[str, object]:
-    supported = getattr(config_type, "__dataclass_fields__", {})
     merged = dict(kwargs)
-    if "sidewall_ordered_split_kind" in supported:
+    if _callable_accepts_kwarg(config_type, "sidewall_ordered_split_kind"):
         # Keep the validated Step 4b sidewall baseline pinned even if backend defaults drift.
         merged["sidewall_ordered_split_kind"] = "none"
     return merged

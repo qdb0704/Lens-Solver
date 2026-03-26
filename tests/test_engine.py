@@ -30,6 +30,7 @@ from kernel_solver_engine import (  # noqa: E402
     request_to_dict,
 )
 from kernel_solver_engine.backend import load_backend  # noqa: E402
+from kernel_solver_engine.engine import _inject_supported_solver_baseline_kwargs  # noqa: E402
 
 
 class PublicKernelSolverEngineTests(unittest.TestCase):
@@ -66,6 +67,29 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         self.assertEqual(cfg.ordered_interface_subcell_count, 4)
         self.assertTrue(cfg.use_lateral_sidewall_trace_projection)
         self.assertEqual(cfg.sidewall_ordered_split_kind, "none")
+
+    def test_engine_pins_validated_sidewall_baseline_for_non_dataclass_constructor(self) -> None:
+        class NonDataclassConfig:
+            def __init__(
+                self,
+                *,
+                ordered_interface_subcell_count: int,
+                use_lateral_sidewall_trace_projection: bool,
+                sidewall_ordered_split_kind: str = "legacy-default",
+            ) -> None:
+                self.ordered_interface_subcell_count = int(ordered_interface_subcell_count)
+                self.use_lateral_sidewall_trace_projection = bool(use_lateral_sidewall_trace_projection)
+                self.sidewall_ordered_split_kind = str(sidewall_ordered_split_kind)
+
+        merged = _inject_supported_solver_baseline_kwargs(
+            NonDataclassConfig,
+            {
+                "ordered_interface_subcell_count": 4,
+                "use_lateral_sidewall_trace_projection": True,
+            },
+        )
+
+        self.assertEqual(merged["sidewall_ordered_split_kind"], "none")
 
     def test_request_round_trip(self) -> None:
         original = make_large_lens_example_request(preset="projector_advanced")
