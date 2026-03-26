@@ -30,6 +30,7 @@ from kernel_solver_engine import (  # noqa: E402
     request_to_dict,
 )
 from kernel_solver_engine.backend import load_backend  # noqa: E402
+from kernel_solver_engine.engine import _inject_supported_solver_baseline_kwargs  # noqa: E402
 
 
 class PublicKernelSolverEngineTests(unittest.TestCase):
@@ -45,13 +46,13 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
 
     def test_large_lens_example_uses_external_default_preset(self) -> None:
         request = make_large_lens_example_request(preset="external_default")
-        self.assertEqual(request.toggles.ordered_interface_subcell_count, 2)
-        self.assertFalse(request.toggles.use_lateral_sidewall_trace_projection)
+        self.assertEqual(request.toggles.ordered_interface_subcell_count, 4)
+        self.assertTrue(request.toggles.use_lateral_sidewall_trace_projection)
 
     def test_focus_only_mainline_turns_off_internal_cavity(self) -> None:
         request = make_large_lens_example_request(preset="focus_only_mainline")
-        self.assertEqual(request.toggles.ordered_interface_subcell_count, 2)
-        self.assertFalse(request.toggles.use_lateral_sidewall_trace_projection)
+        self.assertEqual(request.toggles.ordered_interface_subcell_count, 4)
+        self.assertTrue(request.toggles.use_lateral_sidewall_trace_projection)
         self.assertFalse(request.toggles.use_internal_cavity_correction)
 
     def test_public_loader_uses_explicit_adapter_contract(self) -> None:
@@ -97,6 +98,38 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         self.assertGreaterEqual(response.summary.focus_center_amp, 0.0)
         self.assertEqual(response.best_focus_ey_xy.shape, (17, 17))
         self.assertEqual(response.observation_ey_xy.shape, (17, 17))
+
+    def test_engine_pins_internal_corrected_baseline_when_backend_supports_it(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_large_lens_example_request(preset="external_default")
+        _, _, cfg = engine.build_backend_config(request)
+        self.assertEqual(cfg.sidewall_ordered_split_kind, "none")
+        self.assertEqual(cfg.local_slab_localization_kind, "smooth_partition")
+        self.assertEqual(cfg.local_slab_depth_anchor_count_max, 4)
+        self.assertAlmostEqual(cfg.local_slab_depth_anchor_phase_std_threshold, 0.75)
+
+    def test_baseline_kwarg_injection_supports_non_dataclass_constructor_signature(self) -> None:
+        class NonDataclassConfig:
+            def __init__(
+                self,
+                *,
+                x: object | None = None,
+                local_slab_localization_kind: str = "hard_mask",
+                local_slab_depth_anchor_count_max: int = 1,
+                local_slab_depth_anchor_phase_std_threshold: float = 0.0,
+                sidewall_ordered_split_kind: str = "local_fractional_interface",
+            ) -> None:
+                del x
+                del local_slab_localization_kind
+                del local_slab_depth_anchor_count_max
+                del local_slab_depth_anchor_phase_std_threshold
+                del sidewall_ordered_split_kind
+
+        merged = _inject_supported_solver_baseline_kwargs(NonDataclassConfig, {"x": object()})
+        self.assertEqual(merged["sidewall_ordered_split_kind"], "none")
+        self.assertEqual(merged["local_slab_localization_kind"], "smooth_partition")
+        self.assertEqual(merged["local_slab_depth_anchor_count_max"], 4)
+        self.assertAlmostEqual(merged["local_slab_depth_anchor_phase_std_threshold"], 0.75)
 
     def test_compare_orders_returns_finite_report(self) -> None:
         engine = KernelSolverEngine()

@@ -33,15 +33,15 @@ of depending on a broader internal package surface.
 ## Current Public Defaults
 
 - `external_default`
-  `ordered_interface_subcell_count = 2`
-  `use_lateral_sidewall_trace_projection = False`
+  `ordered_interface_subcell_count = 4`
+  `use_lateral_sidewall_trace_projection = True`
 - `focus_only_mainline`
-  `ordered_interface_subcell_count = 2`
-  `use_lateral_sidewall_trace_projection = False`
+  `ordered_interface_subcell_count = 4`
+  `use_lateral_sidewall_trace_projection = True`
   `use_internal_cavity_correction = False`
 - `validation_reference`
   `ordered_interface_subcell_count = 4`
-  `use_lateral_sidewall_trace_projection = False`
+  `use_lateral_sidewall_trace_projection = True`
 - `fast_preview`
   `ordered_interface_subcell_count = 0`
   `use_lateral_sidewall_trace_projection = False`
@@ -50,8 +50,19 @@ of depending on a broader internal package surface.
   `use_lateral_sidewall_trace_projection = False`
   `use_internal_cavity_correction = False`
 - `projector_advanced`
-  `ordered_interface_subcell_count = 2`
+  `ordered_interface_subcell_count = 4`
   `use_lateral_sidewall_trace_projection = True`
+
+When the private backend exposes the corresponding config kwargs, the public
+engine also pins the current corrected internal baseline:
+
+- `sidewall_ordered_split_kind = "none"`
+- `local_slab_localization_kind = "smooth_partition"`
+- `local_slab_depth_anchor_count_max = 4`
+- `local_slab_depth_anchor_phase_std_threshold = 0.75`
+
+This keeps the public wrapper stable even if the private backend changes its
+own internal defaults later.
 
 ## Minimal Python Usage
 

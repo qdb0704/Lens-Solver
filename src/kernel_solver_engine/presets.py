@@ -19,23 +19,23 @@ def make_named_preset(name: KernelPresetName) -> SolverToggles:
         )
     if name == "focus_only_mainline":
         return SolverToggles(
-            ordered_interface_subcell_count=2,
-            use_lateral_sidewall_trace_projection=False,
+            ordered_interface_subcell_count=4,
+            use_lateral_sidewall_trace_projection=True,
             use_internal_cavity_correction=False,
         )
     if name == "external_default":
         return SolverToggles(
-            ordered_interface_subcell_count=2,
-            use_lateral_sidewall_trace_projection=False,
+            ordered_interface_subcell_count=4,
+            use_lateral_sidewall_trace_projection=True,
         )
     if name == "validation_reference":
         return SolverToggles(
             ordered_interface_subcell_count=4,
-            use_lateral_sidewall_trace_projection=False,
+            use_lateral_sidewall_trace_projection=True,
         )
     if name == "projector_advanced":
         return SolverToggles(
-            ordered_interface_subcell_count=2,
+            ordered_interface_subcell_count=4,
             use_lateral_sidewall_trace_projection=True,
         )
     raise ValueError(f"unsupported preset: {name}")

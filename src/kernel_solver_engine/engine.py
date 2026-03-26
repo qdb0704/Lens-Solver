@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import inspect
 import time
 
 import numpy as np
@@ -76,6 +77,31 @@ def _fwhm_1d(x: np.ndarray, amplitude: np.ndarray) -> float:
 
 def _relative_l2(reference: np.ndarray, candidate: np.ndarray) -> float:
     return float(np.linalg.norm(candidate - reference) / (np.linalg.norm(reference) + 1e-30))
+
+
+def _callable_accepts_kwarg(callable_obj: object, kwarg_name: str) -> bool:
+    try:
+        signature = inspect.signature(callable_obj)
+    except (TypeError, ValueError):
+        return False
+    if kwarg_name in signature.parameters:
+        return True
+    return any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
+
+
+def _inject_supported_solver_baseline_kwargs(config_type: object, kwargs: dict[str, object]) -> dict[str, object]:
+    merged = dict(kwargs)
+    supported = set(getattr(config_type, "__dataclass_fields__", {}).keys())
+    baseline_kwargs = {
+        "sidewall_ordered_split_kind": "none",
+        "local_slab_localization_kind": "smooth_partition",
+        "local_slab_depth_anchor_count_max": 4,
+        "local_slab_depth_anchor_phase_std_threshold": 0.75,
+    }
+    for key, value in baseline_kwargs.items():
+        if key in supported or _callable_accepts_kwarg(config_type, key):
+            merged.setdefault(key, value)
+    return merged
 
 
 class KernelSolverEngine:
@@ -161,7 +187,7 @@ class KernelSolverEngine:
         def z_back_profile(r_mat: np.ndarray) -> np.ndarray:
             return z_back_vertex - sag_profile(r_mat)
 
-        cfg = backend.ZSlicedSolverConfig(
+        cfg_kwargs = dict(
             x=x,
             y=y,
             f0=design.f0_hz,
@@ -184,6 +210,8 @@ class KernelSolverEngine:
             use_internal_cavity_correction=bool(request.toggles.use_internal_cavity_correction),
             cavity_longitudinal_model=str(request.toggles.cavity_longitudinal_model),
         )
+        cfg_kwargs = _inject_supported_solver_baseline_kwargs(backend.ZSlicedSolverConfig, cfg_kwargs)
+        cfg = backend.ZSlicedSolverConfig(**cfg_kwargs)
         return backend, design, cfg
 
     def solve(self, request: SolverKernelRequest) -> SolverKernelResponse:
