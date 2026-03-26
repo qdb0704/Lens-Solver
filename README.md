@@ -33,8 +33,8 @@ of depending on a broader internal package surface.
 ## Current Public Defaults
 
 - `external_default`
-  `ordered_interface_subcell_count = 2`
-  `use_lateral_sidewall_trace_projection = False`
+  `ordered_interface_subcell_count = 4`
+  `use_lateral_sidewall_trace_projection = True`
 - `focus_only_mainline`
   `ordered_interface_subcell_count = 2`
   `use_lateral_sidewall_trace_projection = False`
@@ -52,6 +52,10 @@ of depending on a broader internal package surface.
 - `projector_advanced`
   `ordered_interface_subcell_count = 2`
   `use_lateral_sidewall_trace_projection = True`
+
+When the installed private backend exposes the experimental sidewall
+ordered-split knob, the public wrapper pins the validated baseline
+`sidewall_ordered_split_kind = "none"`.
 
 ## Minimal Python Usage
 

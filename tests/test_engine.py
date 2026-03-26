@@ -45,8 +45,8 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
 
     def test_large_lens_example_uses_external_default_preset(self) -> None:
         request = make_large_lens_example_request(preset="external_default")
-        self.assertEqual(request.toggles.ordered_interface_subcell_count, 2)
-        self.assertFalse(request.toggles.use_lateral_sidewall_trace_projection)
+        self.assertEqual(request.toggles.ordered_interface_subcell_count, 4)
+        self.assertTrue(request.toggles.use_lateral_sidewall_trace_projection)
 
     def test_focus_only_mainline_turns_off_internal_cavity(self) -> None:
         request = make_large_lens_example_request(preset="focus_only_mainline")
@@ -58,6 +58,14 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         backend = load_backend()
         self.assertEqual(backend.module_name, "tests.fake_backend")
         self.assertEqual(backend.adapter_module_name, "tests.fake_backend.kernel_solver_backend")
+
+    def test_engine_pins_validated_sidewall_baseline_when_backend_supports_it(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_large_lens_example_request(preset="external_default")
+        _, _, cfg = engine.build_backend_config(request)
+        self.assertEqual(cfg.ordered_interface_subcell_count, 4)
+        self.assertTrue(cfg.use_lateral_sidewall_trace_projection)
+        self.assertEqual(cfg.sidewall_ordered_split_kind, "none")
 
     def test_request_round_trip(self) -> None:
         original = make_large_lens_example_request(preset="projector_advanced")
