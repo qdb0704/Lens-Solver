@@ -102,11 +102,19 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
     def test_engine_pins_internal_corrected_baseline_when_backend_supports_it(self) -> None:
         engine = KernelSolverEngine()
         request = make_large_lens_example_request(preset="external_default")
-        _, _, cfg = engine.build_backend_config(request)
+        _, design, cfg = engine.build_backend_config(request)
         self.assertEqual(cfg.sidewall_ordered_split_kind, "none")
         self.assertEqual(cfg.local_slab_localization_kind, "smooth_partition")
+        self.assertEqual(cfg.local_slab_response_blend_kind, "partitioned_drive")
+        self.assertEqual(cfg.local_slab_response_operator_interp_kind, "none")
+        self.assertAlmostEqual(cfg.local_slab_response_thickness_alpha, 0.0)
         self.assertEqual(cfg.local_slab_depth_anchor_count_max, 4)
         self.assertAlmostEqual(cfg.local_slab_depth_anchor_phase_std_threshold, 0.75)
+        self.assertTrue(cfg.use_local_slab_adaptive_confidence)
+        self.assertAlmostEqual(cfg.local_slab_adaptive_confidence_ownership_threshold, 0.01)
+        self.assertTrue(cfg.use_local_slab_lateral_patch_refinement)
+        self.assertEqual(cfg.local_slab_lateral_patch_count_max, 4)
+        self.assertAlmostEqual(cfg.local_slab_lateral_patch_x_std_threshold, 6.0 * design.lambda0)
 
     def test_baseline_kwarg_injection_supports_non_dataclass_constructor_signature(self) -> None:
         class NonDataclassConfig:
@@ -115,21 +123,45 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
                 *,
                 x: object | None = None,
                 local_slab_localization_kind: str = "hard_mask",
+                local_slab_response_blend_kind: str = "continuous_thickness_interp",
+                local_slab_response_thickness_alpha: float = 1.0,
+                local_slab_response_operator_interp_kind: str = "linear_thickness",
                 local_slab_depth_anchor_count_max: int = 1,
                 local_slab_depth_anchor_phase_std_threshold: float = 0.0,
                 sidewall_ordered_split_kind: str = "local_fractional_interface",
+                use_local_slab_adaptive_confidence: bool = False,
+                local_slab_adaptive_confidence_ownership_threshold: float = 0.0,
+                use_local_slab_lateral_patch_refinement: bool = False,
+                local_slab_lateral_patch_count_max: int = 1,
+                local_slab_lateral_patch_x_std_threshold: float = 0.0,
             ) -> None:
                 del x
                 del local_slab_localization_kind
+                del local_slab_response_blend_kind
+                del local_slab_response_thickness_alpha
+                del local_slab_response_operator_interp_kind
                 del local_slab_depth_anchor_count_max
                 del local_slab_depth_anchor_phase_std_threshold
                 del sidewall_ordered_split_kind
+                del use_local_slab_adaptive_confidence
+                del local_slab_adaptive_confidence_ownership_threshold
+                del use_local_slab_lateral_patch_refinement
+                del local_slab_lateral_patch_count_max
+                del local_slab_lateral_patch_x_std_threshold
 
-        merged = _inject_supported_solver_baseline_kwargs(NonDataclassConfig, {"x": object()})
+        merged = _inject_supported_solver_baseline_kwargs(NonDataclassConfig, {"x": object()}, lambda0=0.03)
         self.assertEqual(merged["sidewall_ordered_split_kind"], "none")
         self.assertEqual(merged["local_slab_localization_kind"], "smooth_partition")
+        self.assertEqual(merged["local_slab_response_blend_kind"], "partitioned_drive")
+        self.assertEqual(merged["local_slab_response_operator_interp_kind"], "none")
+        self.assertAlmostEqual(merged["local_slab_response_thickness_alpha"], 0.0)
         self.assertEqual(merged["local_slab_depth_anchor_count_max"], 4)
         self.assertAlmostEqual(merged["local_slab_depth_anchor_phase_std_threshold"], 0.75)
+        self.assertTrue(merged["use_local_slab_adaptive_confidence"])
+        self.assertAlmostEqual(merged["local_slab_adaptive_confidence_ownership_threshold"], 0.01)
+        self.assertTrue(merged["use_local_slab_lateral_patch_refinement"])
+        self.assertEqual(merged["local_slab_lateral_patch_count_max"], 4)
+        self.assertAlmostEqual(merged["local_slab_lateral_patch_x_std_threshold"], 0.18)
 
     def test_compare_orders_returns_finite_report(self) -> None:
         engine = KernelSolverEngine()

@@ -58,8 +58,16 @@ engine also pins the current corrected internal baseline:
 
 - `sidewall_ordered_split_kind = "none"`
 - `local_slab_localization_kind = "smooth_partition"`
+- `local_slab_response_blend_kind = "partitioned_drive"`
+- `local_slab_response_thickness_alpha = 0.0`
+- `local_slab_response_operator_interp_kind = "none"`
 - `local_slab_depth_anchor_count_max = 4`
 - `local_slab_depth_anchor_phase_std_threshold = 0.75`
+- `use_local_slab_adaptive_confidence = True`
+- `local_slab_adaptive_confidence_ownership_threshold = 0.01`
+- `use_local_slab_lateral_patch_refinement = True`
+- `local_slab_lateral_patch_count_max = 4`
+- `local_slab_lateral_patch_x_std_threshold = 6.0 * lambda0`
 
 This keeps the public wrapper stable even if the private backend changes its
 own internal defaults later.

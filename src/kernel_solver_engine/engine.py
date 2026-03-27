@@ -89,15 +89,29 @@ def _callable_accepts_kwarg(callable_obj: object, kwarg_name: str) -> bool:
     return any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
 
 
-def _inject_supported_solver_baseline_kwargs(config_type: object, kwargs: dict[str, object]) -> dict[str, object]:
+def _inject_supported_solver_baseline_kwargs(
+    config_type: object,
+    kwargs: dict[str, object],
+    *,
+    lambda0: float | None = None,
+) -> dict[str, object]:
     merged = dict(kwargs)
     supported = set(getattr(config_type, "__dataclass_fields__", {}).keys())
     baseline_kwargs = {
         "sidewall_ordered_split_kind": "none",
         "local_slab_localization_kind": "smooth_partition",
+        "local_slab_response_blend_kind": "partitioned_drive",
+        "local_slab_response_thickness_alpha": 0.0,
+        "local_slab_response_operator_interp_kind": "none",
         "local_slab_depth_anchor_count_max": 4,
         "local_slab_depth_anchor_phase_std_threshold": 0.75,
+        "use_local_slab_adaptive_confidence": True,
+        "local_slab_adaptive_confidence_ownership_threshold": 0.01,
+        "use_local_slab_lateral_patch_refinement": True,
+        "local_slab_lateral_patch_count_max": 4,
     }
+    if lambda0 is not None:
+        baseline_kwargs["local_slab_lateral_patch_x_std_threshold"] = 6.0 * float(lambda0)
     for key, value in baseline_kwargs.items():
         if key in supported or _callable_accepts_kwarg(config_type, key):
             merged.setdefault(key, value)
@@ -210,7 +224,7 @@ class KernelSolverEngine:
             use_internal_cavity_correction=bool(request.toggles.use_internal_cavity_correction),
             cavity_longitudinal_model=str(request.toggles.cavity_longitudinal_model),
         )
-        cfg_kwargs = _inject_supported_solver_baseline_kwargs(backend.ZSlicedSolverConfig, cfg_kwargs)
+        cfg_kwargs = _inject_supported_solver_baseline_kwargs(backend.ZSlicedSolverConfig, cfg_kwargs, lambda0=design.lambda0)
         cfg = backend.ZSlicedSolverConfig(**cfg_kwargs)
         return backend, design, cfg
 
