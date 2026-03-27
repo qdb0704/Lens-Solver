@@ -45,8 +45,8 @@ class SourceSpec:
 
 @dataclass(frozen=True)
 class SolverToggles:
-    ordered_interface_subcell_count: int = 2
-    use_lateral_sidewall_trace_projection: bool = False
+    ordered_interface_subcell_count: int = 4
+    use_lateral_sidewall_trace_projection: bool = True
     use_internal_cavity_correction: bool = True
     cavity_longitudinal_model: Literal[
         "normal_incidence",

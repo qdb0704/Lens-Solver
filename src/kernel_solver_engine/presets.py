@@ -25,8 +25,8 @@ def make_named_preset(name: KernelPresetName) -> SolverToggles:
         )
     if name == "external_default":
         return SolverToggles(
-            ordered_interface_subcell_count=2,
-            use_lateral_sidewall_trace_projection=False,
+            ordered_interface_subcell_count=4,
+            use_lateral_sidewall_trace_projection=True,
         )
     if name == "validation_reference":
         return SolverToggles(
