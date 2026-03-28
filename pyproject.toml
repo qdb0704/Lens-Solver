@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kernel-solver-engine"
-version = "0.3.0"
+version = "0.3.1"
 description = "Public interface package for a proprietary finite-lens kernel solver."
 readme = "README.md"
 requires-python = ">=3.11"

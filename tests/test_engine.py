@@ -24,6 +24,7 @@ from kernel_solver_engine import (  # noqa: E402
     SolverKernelRequest,
     SourceSpec,
     SymmetricLensSpec,
+    make_frozen_f_lens_f_request,
     make_large_lens_example_request,
     make_named_preset,
     request_from_dict,
@@ -54,6 +55,29 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         self.assertEqual(request.toggles.ordered_interface_subcell_count, 4)
         self.assertTrue(request.toggles.use_lateral_sidewall_trace_projection)
         self.assertFalse(request.toggles.use_internal_cavity_correction)
+
+    def test_frozen_f_lens_f_request_freezes_geometry_and_focal_spacing(self) -> None:
+        request = make_frozen_f_lens_f_request(preset="external_default")
+        engine = KernelSolverEngine()
+        design = engine.build_design(request)
+        self.assertEqual(request.lens.diameter_lambda, 50.0)
+        self.assertEqual(request.lens.center_thickness_lambda, 10.024)
+        self.assertEqual(request.lens.edge_thickness_lambda, 3.5)
+        self.assertEqual(request.source.waist_lambda, 3.0)
+        self.assertIsNone(request.source.source_phase_radius_lambda)
+        self.assertTrue(request.toggles.use_lateral_sidewall_trace_projection)
+        self.assertEqual(request.toggles.ordered_interface_subcell_count, 4)
+        self.assertAlmostEqual(request.source.source_to_lens_lambda, design.effective_focal_length_lambda, places=6)
+        self.assertAlmostEqual(request.source.lens_to_observation_lambda, design.effective_focal_length_lambda, places=6)
+
+    def test_engine_builds_gaussian_waist_feed_when_phase_radius_is_none(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_frozen_f_lens_f_request(preset="external_default")
+        _, _, cfg = engine.build_backend_config(request)
+        self.assertEqual(cfg.feed.label, "kernel-gaussian-waist-y")
+        center_y = cfg.y.size // 2
+        center_x = cfg.x.size // 2
+        self.assertAlmostEqual(float(abs(cfg.feed.ey_xy[center_y, center_x])), 1.0, places=12)
 
     def test_public_loader_uses_explicit_adapter_contract(self) -> None:
         backend = load_backend()

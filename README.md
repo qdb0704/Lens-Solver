@@ -84,6 +84,32 @@ response = engine.solve(request)
 print(response.summary.as_dict())
 ```
 
+## Frozen `f-lens-f` Benchmark Helper
+
+The public package also exposes a named request helper for the current frozen
+private benchmark geometry:
+
+```python
+from kernel_solver_engine import KernelSolverEngine, make_frozen_f_lens_f_request
+
+engine = KernelSolverEngine()
+request = make_frozen_f_lens_f_request(preset="external_default")
+response = engine.solve(request)
+```
+
+This helper freezes:
+
+- a symmetric biconvex lens with `D = 50 lambda`, `center_thickness = 10.024 lambda`,
+  `edge_thickness = 3.5 lambda`
+- a Gaussian beam with `waist = 3 lambda`
+- `source -> propagate f -> lens -> propagate f`
+- `source_phase_radius_lambda = None`, meaning the source plane is treated as a
+  Gaussian waist plane rather than a spherical-wave feed
+
+The private spectral-vs-hybrid compare scripts additionally enable the private
+adaptive-`z` and spectral-backbone code paths, but this helper keeps the same
+frozen geometry and source-spacing convention on the public API side.
+
 ## Validation Gate Usage
 
 ```python

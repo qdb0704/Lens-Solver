@@ -31,18 +31,33 @@ def _build_axis(half_width: float, dx: float) -> np.ndarray:
     return np.linspace(-half_steps * dx, half_steps * dx, 2 * half_steps + 1, dtype=np.float64)
 
 
-def _gaussian_spherical_feed(backend, x: np.ndarray, y: np.ndarray, *, waist: float, lambda0: float, phase_radius: float, polarization: str, z_ref: float):
+def _gaussian_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    waist: float,
+    lambda0: float,
+    phase_radius: float | None,
+    polarization: str,
+    z_ref: float,
+):
     x_mat, y_mat = np.meshgrid(x, y, indexing="xy")
     envelope = np.exp(-(x_mat**2 + y_mat**2) / waist**2)
-    k0 = 2.0 * np.pi / lambda0
-    phase = np.exp(-1j * k0 * (np.sqrt(x_mat**2 + y_mat**2 + phase_radius**2) - phase_radius))
+    if phase_radius is None:
+        phase = np.ones_like(envelope, dtype=np.complex128)
+        label = f"kernel-gaussian-waist-{polarization}"
+    else:
+        k0 = 2.0 * np.pi / lambda0
+        phase = np.exp(-1j * k0 * (np.sqrt(x_mat**2 + y_mat**2 + phase_radius**2) - phase_radius))
+        label = f"kernel-gaussian-spherical-{polarization}"
     ex_xy = np.zeros_like(envelope, dtype=np.complex128)
     ey_xy = np.zeros_like(envelope, dtype=np.complex128)
     if polarization == "x":
         ex_xy[...] = envelope * phase
     else:
         ey_xy[...] = envelope * phase
-    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-gaussian-spherical-{polarization}")
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=label)
 
 
 def _fwhm_1d(x: np.ndarray, amplitude: np.ndarray) -> float:
@@ -147,7 +162,11 @@ class KernelSolverEngine:
         z_lens_front = z_source + float(request.source.source_to_lens_lambda) * lambda0
         z_observation_end = z_lens_front + center_thickness + float(request.source.lens_to_observation_lambda) * lambda0
         waist = float(request.source.waist_lambda) * lambda0
-        source_phase_radius = float(request.source.source_phase_radius_lambda) * lambda0
+        source_phase_radius = (
+            None
+            if request.source.source_phase_radius_lambda is None
+            else float(request.source.source_phase_radius_lambda) * lambda0
+        )
         return SymmetricLensDesign(
             lambda0=lambda0,
             f0_hz=float(request.f0_hz),
@@ -176,7 +195,7 @@ class KernelSolverEngine:
         design = self.build_design(request)
         x = _build_axis(design.compute_half_width, design.dx)
         y = x.copy()
-        feed = _gaussian_spherical_feed(
+        feed = _gaussian_feed(
             backend,
             x,
             y,
