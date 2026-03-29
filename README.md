@@ -132,6 +132,20 @@ from kernel_solver_engine import (
 These helpers stay inside the public request/response layer; they do not expose
 the private spectral or hybrid backbone implementation details.
 
+## Private-Only Validation Boundary
+
+The local private workspace may additionally run deeper validation scripts such
+as:
+
+- spectral-vs-hybrid compare plots
+- flat-slab reflection truth checks
+- local benchmark sweep scripts around the proprietary backbone
+
+Those assets remain private-local only. The public package only exposes the
+request builders and engine wrapper needed to drive the separately installed
+private backend; it does not ship the proprietary solver backbone, private
+diagnostic scripts, or the spectral implementation itself.
+
 ## Validation Gate Usage
 
 ```python
