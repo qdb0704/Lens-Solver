@@ -36,7 +36,10 @@ class SymmetricLensSpec:
 
 @dataclass(frozen=True)
 class SourceSpec:
+    source_kind: Literal["gaussian", "plane_wave"] = "gaussian"
     waist_lambda: float = 8.0
+    source_x_offset_lambda: float = 0.0
+    source_y_offset_lambda: float = 0.0
     source_to_lens_lambda: float = 20.0
     source_phase_radius_lambda: float | None = 36.0
     lens_to_observation_lambda: float = 30.0

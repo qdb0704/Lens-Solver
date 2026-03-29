@@ -132,3 +132,87 @@ def make_frozen_f_lens_f_request(
         ),
     )
     return with_named_preset(request, preset)
+
+
+def make_plane_wave_focus_request(
+    preset: KernelPresetName = "external_default",
+) -> SolverKernelRequest:
+    lens = SymmetricLensSpec(
+        diameter_lambda=50.0,
+        center_thickness_lambda=10.024,
+        edge_thickness_lambda=3.5,
+        eps_r=4.0,
+        mu_r=1.0,
+    )
+    refractive_index = float(np.sqrt(float(lens.eps_r) * float(lens.mu_r)))
+    sag_edge_lambda = 0.5 * (float(lens.center_thickness_lambda) - float(lens.edge_thickness_lambda))
+    curvature_radius_lambda = _spherical_cap_radius(0.5 * float(lens.diameter_lambda), sag_edge_lambda)
+    f_lambda = _symmetric_lens_focal_length_lambda(
+        refractive_index,
+        curvature_radius_lambda,
+        float(lens.center_thickness_lambda),
+    )
+    request = SolverKernelRequest(
+        lens=lens,
+        source=SourceSpec(
+            source_kind="plane_wave",
+            waist_lambda=3.0,
+            source_phase_radius_lambda=None,
+            source_to_lens_lambda=f_lambda,
+            lens_to_observation_lambda=f_lambda,
+            polarization="y",
+        ),
+        sampling=SamplingSpec(
+            compute_half_width_lambda=64.0,
+            display_half_width_lambda=30.0,
+            dx_lambda=0.40,
+            dz_lens_lambda=0.50,
+            focus_scan_dz_lambda=0.50,
+        ),
+    )
+    return with_named_preset(request, preset)
+
+
+def make_offaxis_2f_imaging_request(
+    preset: KernelPresetName = "external_default",
+) -> SolverKernelRequest:
+    lens = SymmetricLensSpec(
+        diameter_lambda=50.0,
+        center_thickness_lambda=10.024,
+        edge_thickness_lambda=3.5,
+        eps_r=4.0,
+        mu_r=1.0,
+    )
+    refractive_index = float(np.sqrt(float(lens.eps_r) * float(lens.mu_r)))
+    sag_edge_lambda = 0.5 * (float(lens.center_thickness_lambda) - float(lens.edge_thickness_lambda))
+    curvature_radius_lambda = _spherical_cap_radius(0.5 * float(lens.diameter_lambda), sag_edge_lambda)
+    f_lambda = _symmetric_lens_focal_length_lambda(
+        refractive_index,
+        curvature_radius_lambda,
+        float(lens.center_thickness_lambda),
+    )
+    principal_shift_lambda = f_lambda * (refractive_index - 1.0) * float(lens.center_thickness_lambda) / (
+        refractive_index * curvature_radius_lambda
+    )
+    object_distance_lambda = 2.0 * f_lambda - principal_shift_lambda
+    request = SolverKernelRequest(
+        lens=lens,
+        source=SourceSpec(
+            source_kind="gaussian",
+            waist_lambda=1.5,
+            source_x_offset_lambda=6.0,
+            source_y_offset_lambda=0.0,
+            source_phase_radius_lambda=None,
+            source_to_lens_lambda=object_distance_lambda,
+            lens_to_observation_lambda=object_distance_lambda,
+            polarization="y",
+        ),
+        sampling=SamplingSpec(
+            compute_half_width_lambda=64.0,
+            display_half_width_lambda=30.0,
+            dx_lambda=0.40,
+            dz_lens_lambda=0.50,
+            focus_scan_dz_lambda=0.50,
+        ),
+    )
+    return with_named_preset(request, preset)

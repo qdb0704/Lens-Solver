@@ -110,6 +110,28 @@ The private spectral-vs-hybrid compare scripts additionally enable the private
 adaptive-`z` and spectral-backbone code paths, but this helper keeps the same
 frozen geometry and source-spacing convention on the public API side.
 
+## Additional Public Benchmark Helpers
+
+The public wrapper also exposes two higher-level request builders that match the
+private benchmark family without exposing the private solver internals:
+
+```python
+from kernel_solver_engine import (
+    make_offaxis_2f_imaging_request,
+    make_plane_wave_focus_request,
+)
+```
+
+- `make_plane_wave_focus_request()`
+  A `D/F ~= 1` symmetric biconvex lens illuminated by a plane wave and sampled
+  one focal length behind the lens.
+- `make_offaxis_2f_imaging_request()`
+  A thick-lens `2f -> 2f` imaging request using an off-axis Gaussian object
+  field (`waist = 1.5 lambda`, `x offset = 6 lambda`) at the object plane.
+
+These helpers stay inside the public request/response layer; they do not expose
+the private spectral or hybrid backbone implementation details.
+
 ## Validation Gate Usage
 
 ```python

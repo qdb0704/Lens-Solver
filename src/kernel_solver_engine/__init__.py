@@ -22,7 +22,14 @@ from .models import (
     SymmetricLensSpec,
 )
 from .plotting import axis_edges_from_centers, pcolormesh_from_centers
-from .presets import make_frozen_f_lens_f_request, make_large_lens_example_request, make_named_preset, with_named_preset
+from .presets import (
+    make_frozen_f_lens_f_request,
+    make_large_lens_example_request,
+    make_named_preset,
+    make_offaxis_2f_imaging_request,
+    make_plane_wave_focus_request,
+    with_named_preset,
+)
 
 __all__ = [
     "BACKEND_ENV_VAR",
@@ -45,6 +52,8 @@ __all__ = [
     "load_request_json",
     "make_large_lens_example_request",
     "make_named_preset",
+    "make_offaxis_2f_imaging_request",
+    "make_plane_wave_focus_request",
     "pcolormesh_from_centers",
     "report_to_dict",
     "request_from_dict",

@@ -60,6 +60,45 @@ def _gaussian_feed(
     return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=label)
 
 
+def _offset_gaussian_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    waist: float,
+    x_offset: float,
+    y_offset: float,
+    polarization: str,
+    z_ref: float,
+):
+    x_mat, y_mat = np.meshgrid(x, y, indexing="xy")
+    envelope = np.exp(-((x_mat - x_offset) ** 2 + (y_mat - y_offset) ** 2) / waist**2)
+    ex_xy = np.zeros_like(envelope, dtype=np.complex128)
+    ey_xy = np.zeros_like(envelope, dtype=np.complex128)
+    if polarization == "x":
+        ex_xy[...] = envelope
+    else:
+        ey_xy[...] = envelope
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-gaussian-offset-{polarization}")
+
+
+def _plane_wave_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    polarization: str,
+    z_ref: float,
+):
+    ex_xy = np.zeros((y.size, x.size), dtype=np.complex128)
+    ey_xy = np.zeros((y.size, x.size), dtype=np.complex128)
+    if polarization == "x":
+        ex_xy[...] = 1.0 + 0.0j
+    else:
+        ey_xy[...] = 1.0 + 0.0j
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-plane-wave-{polarization}")
+
+
 def _fwhm_1d(x: np.ndarray, amplitude: np.ndarray) -> float:
     peak = float(np.max(amplitude))
     if peak <= 0.0:
@@ -195,16 +234,36 @@ class KernelSolverEngine:
         design = self.build_design(request)
         x = _build_axis(design.compute_half_width, design.dx)
         y = x.copy()
-        feed = _gaussian_feed(
-            backend,
-            x,
-            y,
-            waist=design.waist,
-            lambda0=design.lambda0,
-            phase_radius=design.source_phase_radius,
-            polarization=design.polarization,
-            z_ref=design.z_source,
-        )
+        if request.source.source_kind == "plane_wave":
+            feed = _plane_wave_feed(
+                backend,
+                x,
+                y,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
+        elif abs(float(request.source.source_x_offset_lambda)) > 1e-15 or abs(float(request.source.source_y_offset_lambda)) > 1e-15:
+            feed = _offset_gaussian_feed(
+                backend,
+                x,
+                y,
+                waist=design.waist,
+                x_offset=float(request.source.source_x_offset_lambda) * design.lambda0,
+                y_offset=float(request.source.source_y_offset_lambda) * design.lambda0,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
+        else:
+            feed = _gaussian_feed(
+                backend,
+                x,
+                y,
+                waist=design.waist,
+                lambda0=design.lambda0,
+                phase_radius=design.source_phase_radius,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
         z_front_vertex = design.z_lens_front
         z_back_vertex = design.z_lens_front + design.center_thickness
         curvature_radius = design.curvature_radius

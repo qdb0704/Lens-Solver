@@ -7,6 +7,8 @@ import sys
 import unittest
 from unittest import mock
 
+import numpy as np
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
@@ -27,6 +29,8 @@ from kernel_solver_engine import (  # noqa: E402
     make_frozen_f_lens_f_request,
     make_large_lens_example_request,
     make_named_preset,
+    make_offaxis_2f_imaging_request,
+    make_plane_wave_focus_request,
     request_from_dict,
     request_to_dict,
 )
@@ -78,6 +82,36 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         center_y = cfg.y.size // 2
         center_x = cfg.x.size // 2
         self.assertAlmostEqual(float(abs(cfg.feed.ey_xy[center_y, center_x])), 1.0, places=12)
+
+    def test_engine_builds_plane_wave_feed_for_plane_wave_request(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_plane_wave_focus_request(preset="external_default")
+        _, _, cfg = engine.build_backend_config(request)
+        self.assertEqual(cfg.feed.label, "kernel-plane-wave-y")
+        self.assertTrue(np.allclose(cfg.feed.ex_xy, 0.0))
+        self.assertTrue(np.allclose(cfg.feed.ey_xy, 1.0))
+
+    def test_engine_builds_offset_gaussian_feed_for_offaxis_imaging_request(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_offaxis_2f_imaging_request(preset="external_default")
+        _, design, cfg = engine.build_backend_config(request)
+        center_y = cfg.y.size // 2
+        peak_index = int(np.argmax(np.abs(cfg.feed.ey_xy[center_y])))
+        peak_x_lambda = float(cfg.x[peak_index] / design.lambda0)
+        self.assertEqual(cfg.feed.label, "kernel-gaussian-offset-y")
+        self.assertAlmostEqual(peak_x_lambda, 6.0, places=6)
+
+    def test_offaxis_2f_request_freezes_expected_geometry(self) -> None:
+        request = make_offaxis_2f_imaging_request(preset="external_default")
+        engine = KernelSolverEngine()
+        design = engine.build_design(request)
+        self.assertEqual(request.lens.diameter_lambda, 50.0)
+        self.assertEqual(request.source.waist_lambda, 1.5)
+        self.assertEqual(request.source.source_kind, "gaussian")
+        self.assertEqual(request.source.source_x_offset_lambda, 6.0)
+        self.assertIsNone(request.source.source_phase_radius_lambda)
+        self.assertAlmostEqual(request.source.source_to_lens_lambda, request.source.lens_to_observation_lambda, places=9)
+        self.assertGreater(request.source.source_to_lens_lambda, design.effective_focal_length_lambda)
 
     def test_public_loader_uses_explicit_adapter_contract(self) -> None:
         backend = load_backend()
