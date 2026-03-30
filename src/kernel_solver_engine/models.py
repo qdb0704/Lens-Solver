@@ -36,9 +36,12 @@ class SymmetricLensSpec:
 
 @dataclass(frozen=True)
 class SourceSpec:
+    source_kind: Literal["gaussian", "plane_wave"] = "gaussian"
     waist_lambda: float = 8.0
+    source_x_offset_lambda: float = 0.0
+    source_y_offset_lambda: float = 0.0
     source_to_lens_lambda: float = 20.0
-    source_phase_radius_lambda: float = 36.0
+    source_phase_radius_lambda: float | None = 36.0
     lens_to_observation_lambda: float = 30.0
     polarization: Literal["x", "y"] = "y"
 
@@ -84,7 +87,7 @@ class SymmetricLensDesign:
     z_lens_front: float
     z_observation_end: float
     waist: float
-    source_phase_radius: float
+    source_phase_radius: float | None
     polarization: Literal["x", "y"]
 
 

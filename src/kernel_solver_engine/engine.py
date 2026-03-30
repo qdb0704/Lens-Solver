@@ -31,18 +31,72 @@ def _build_axis(half_width: float, dx: float) -> np.ndarray:
     return np.linspace(-half_steps * dx, half_steps * dx, 2 * half_steps + 1, dtype=np.float64)
 
 
-def _gaussian_spherical_feed(backend, x: np.ndarray, y: np.ndarray, *, waist: float, lambda0: float, phase_radius: float, polarization: str, z_ref: float):
+def _gaussian_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    waist: float,
+    lambda0: float,
+    phase_radius: float | None,
+    polarization: str,
+    z_ref: float,
+):
     x_mat, y_mat = np.meshgrid(x, y, indexing="xy")
     envelope = np.exp(-(x_mat**2 + y_mat**2) / waist**2)
-    k0 = 2.0 * np.pi / lambda0
-    phase = np.exp(-1j * k0 * (np.sqrt(x_mat**2 + y_mat**2 + phase_radius**2) - phase_radius))
+    if phase_radius is None:
+        phase = np.ones_like(envelope, dtype=np.complex128)
+        label = f"kernel-gaussian-waist-{polarization}"
+    else:
+        k0 = 2.0 * np.pi / lambda0
+        phase = np.exp(-1j * k0 * (np.sqrt(x_mat**2 + y_mat**2 + phase_radius**2) - phase_radius))
+        label = f"kernel-gaussian-spherical-{polarization}"
     ex_xy = np.zeros_like(envelope, dtype=np.complex128)
     ey_xy = np.zeros_like(envelope, dtype=np.complex128)
     if polarization == "x":
         ex_xy[...] = envelope * phase
     else:
         ey_xy[...] = envelope * phase
-    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-gaussian-spherical-{polarization}")
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=label)
+
+
+def _offset_gaussian_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    waist: float,
+    x_offset: float,
+    y_offset: float,
+    polarization: str,
+    z_ref: float,
+):
+    x_mat, y_mat = np.meshgrid(x, y, indexing="xy")
+    envelope = np.exp(-((x_mat - x_offset) ** 2 + (y_mat - y_offset) ** 2) / waist**2)
+    ex_xy = np.zeros_like(envelope, dtype=np.complex128)
+    ey_xy = np.zeros_like(envelope, dtype=np.complex128)
+    if polarization == "x":
+        ex_xy[...] = envelope
+    else:
+        ey_xy[...] = envelope
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-gaussian-offset-{polarization}")
+
+
+def _plane_wave_feed(
+    backend,
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    polarization: str,
+    z_ref: float,
+):
+    ex_xy = np.zeros((y.size, x.size), dtype=np.complex128)
+    ey_xy = np.zeros((y.size, x.size), dtype=np.complex128)
+    if polarization == "x":
+        ex_xy[...] = 1.0 + 0.0j
+    else:
+        ey_xy[...] = 1.0 + 0.0j
+    return backend.FeedField(ex_xy=ex_xy, ey_xy=ey_xy, z_ref=z_ref, label=f"kernel-plane-wave-{polarization}")
 
 
 def _fwhm_1d(x: np.ndarray, amplitude: np.ndarray) -> float:
@@ -79,27 +133,42 @@ def _relative_l2(reference: np.ndarray, candidate: np.ndarray) -> float:
     return float(np.linalg.norm(candidate - reference) / (np.linalg.norm(reference) + 1e-30))
 
 
-def _callable_accepts_kwarg(config_type: type, kwarg_name: str) -> bool:
-    dataclass_fields = getattr(config_type, "__dataclass_fields__", {})
-    if kwarg_name in dataclass_fields:
-        return True
+def _callable_accepts_kwarg(callable_obj: object, kwarg_name: str) -> bool:
     try:
-        parameters = inspect.signature(config_type).parameters.values()
+        signature = inspect.signature(callable_obj)
     except (TypeError, ValueError):
         return False
-    for parameter in parameters:
-        if parameter.kind is inspect.Parameter.VAR_KEYWORD:
-            return True
-        if parameter.name == kwarg_name:
-            return True
-    return False
+    if kwarg_name in signature.parameters:
+        return True
+    return any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
 
 
-def _inject_supported_solver_baseline_kwargs(config_type: type, kwargs: dict[str, object]) -> dict[str, object]:
+def _inject_supported_solver_baseline_kwargs(
+    config_type: object,
+    kwargs: dict[str, object],
+    *,
+    lambda0: float | None = None,
+) -> dict[str, object]:
     merged = dict(kwargs)
-    if _callable_accepts_kwarg(config_type, "sidewall_ordered_split_kind"):
-        # Keep the validated Step 4b sidewall baseline pinned even if backend defaults drift.
-        merged["sidewall_ordered_split_kind"] = "none"
+    supported = set(getattr(config_type, "__dataclass_fields__", {}).keys())
+    baseline_kwargs = {
+        "sidewall_ordered_split_kind": "none",
+        "local_slab_localization_kind": "smooth_partition",
+        "local_slab_response_blend_kind": "partitioned_drive",
+        "local_slab_response_thickness_alpha": 0.0,
+        "local_slab_response_operator_interp_kind": "none",
+        "local_slab_depth_anchor_count_max": 4,
+        "local_slab_depth_anchor_phase_std_threshold": 0.75,
+        "use_local_slab_adaptive_confidence": True,
+        "local_slab_adaptive_confidence_ownership_threshold": 0.01,
+        "use_local_slab_lateral_patch_refinement": True,
+        "local_slab_lateral_patch_count_max": 4,
+    }
+    if lambda0 is not None:
+        baseline_kwargs["local_slab_lateral_patch_x_std_threshold"] = 6.0 * float(lambda0)
+    for key, value in baseline_kwargs.items():
+        if key in supported or _callable_accepts_kwarg(config_type, key):
+            merged.setdefault(key, value)
     return merged
 
 
@@ -132,7 +201,11 @@ class KernelSolverEngine:
         z_lens_front = z_source + float(request.source.source_to_lens_lambda) * lambda0
         z_observation_end = z_lens_front + center_thickness + float(request.source.lens_to_observation_lambda) * lambda0
         waist = float(request.source.waist_lambda) * lambda0
-        source_phase_radius = float(request.source.source_phase_radius_lambda) * lambda0
+        source_phase_radius = (
+            None
+            if request.source.source_phase_radius_lambda is None
+            else float(request.source.source_phase_radius_lambda) * lambda0
+        )
         return SymmetricLensDesign(
             lambda0=lambda0,
             f0_hz=float(request.f0_hz),
@@ -161,16 +234,36 @@ class KernelSolverEngine:
         design = self.build_design(request)
         x = _build_axis(design.compute_half_width, design.dx)
         y = x.copy()
-        feed = _gaussian_spherical_feed(
-            backend,
-            x,
-            y,
-            waist=design.waist,
-            lambda0=design.lambda0,
-            phase_radius=design.source_phase_radius,
-            polarization=design.polarization,
-            z_ref=design.z_source,
-        )
+        if request.source.source_kind == "plane_wave":
+            feed = _plane_wave_feed(
+                backend,
+                x,
+                y,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
+        elif abs(float(request.source.source_x_offset_lambda)) > 1e-15 or abs(float(request.source.source_y_offset_lambda)) > 1e-15:
+            feed = _offset_gaussian_feed(
+                backend,
+                x,
+                y,
+                waist=design.waist,
+                x_offset=float(request.source.source_x_offset_lambda) * design.lambda0,
+                y_offset=float(request.source.source_y_offset_lambda) * design.lambda0,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
+        else:
+            feed = _gaussian_feed(
+                backend,
+                x,
+                y,
+                waist=design.waist,
+                lambda0=design.lambda0,
+                phase_radius=design.source_phase_radius,
+                polarization=design.polarization,
+                z_ref=design.z_source,
+            )
         z_front_vertex = design.z_lens_front
         z_back_vertex = design.z_lens_front + design.center_thickness
         curvature_radius = design.curvature_radius
@@ -188,29 +281,30 @@ class KernelSolverEngine:
 
         cfg_kwargs = _inject_supported_solver_baseline_kwargs(
             backend.ZSlicedSolverConfig,
-            {
-                "x": x,
-                "y": y,
-                "f0": design.f0_hz,
-                "feed": feed,
-                "material": backend.MaterialTensor.from_relative(
+            dict(
+                x=x,
+                y=y,
+                f0=design.f0_hz,
+                feed=feed,
+                material=backend.MaterialTensor.from_relative(
                     np.eye(3) * float(request.lens.eps_r),
                     np.eye(3) * float(request.lens.mu_r),
                 ),
-                "lens": backend.ZSlicedLensConfig(
+                lens=backend.ZSlicedLensConfig(
                     radius=design.lens_radius,
                     z_front_profile=z_front_profile,
                     z_back_profile=z_back_profile,
                     dz_lens=design.dz_lens,
                     occupancy_kind="fractional",
                 ),
-                "fft_convention": backend.FFTConvention(inverse_input_is_shifted=True),
-                "support_policy": "propagating_only",
-                "ordered_interface_subcell_count": int(request.toggles.ordered_interface_subcell_count),
-                "use_lateral_sidewall_trace_projection": bool(request.toggles.use_lateral_sidewall_trace_projection),
-                "use_internal_cavity_correction": bool(request.toggles.use_internal_cavity_correction),
-                "cavity_longitudinal_model": str(request.toggles.cavity_longitudinal_model),
-            },
+                fft_convention=backend.FFTConvention(inverse_input_is_shifted=True),
+                support_policy="propagating_only",
+                ordered_interface_subcell_count=int(request.toggles.ordered_interface_subcell_count),
+                use_lateral_sidewall_trace_projection=bool(request.toggles.use_lateral_sidewall_trace_projection),
+                use_internal_cavity_correction=bool(request.toggles.use_internal_cavity_correction),
+                cavity_longitudinal_model=str(request.toggles.cavity_longitudinal_model),
+            ),
+            lambda0=design.lambda0,
         )
         cfg = backend.ZSlicedSolverConfig(**cfg_kwargs)
         return backend, design, cfg

@@ -36,12 +36,12 @@ of depending on a broader internal package surface.
   `ordered_interface_subcell_count = 4`
   `use_lateral_sidewall_trace_projection = True`
 - `focus_only_mainline`
-  `ordered_interface_subcell_count = 2`
-  `use_lateral_sidewall_trace_projection = False`
+  `ordered_interface_subcell_count = 4`
+  `use_lateral_sidewall_trace_projection = True`
   `use_internal_cavity_correction = False`
 - `validation_reference`
   `ordered_interface_subcell_count = 4`
-  `use_lateral_sidewall_trace_projection = False`
+  `use_lateral_sidewall_trace_projection = True`
 - `fast_preview`
   `ordered_interface_subcell_count = 0`
   `use_lateral_sidewall_trace_projection = False`
@@ -50,12 +50,27 @@ of depending on a broader internal package surface.
   `use_lateral_sidewall_trace_projection = False`
   `use_internal_cavity_correction = False`
 - `projector_advanced`
-  `ordered_interface_subcell_count = 2`
+  `ordered_interface_subcell_count = 4`
   `use_lateral_sidewall_trace_projection = True`
 
-When the installed private backend exposes the experimental sidewall
-ordered-split knob, the public wrapper pins the validated baseline
-`sidewall_ordered_split_kind = "none"`.
+When the private backend exposes the corresponding config kwargs, the public
+engine also pins the current corrected internal baseline:
+
+- `sidewall_ordered_split_kind = "none"`
+- `local_slab_localization_kind = "smooth_partition"`
+- `local_slab_response_blend_kind = "partitioned_drive"`
+- `local_slab_response_thickness_alpha = 0.0`
+- `local_slab_response_operator_interp_kind = "none"`
+- `local_slab_depth_anchor_count_max = 4`
+- `local_slab_depth_anchor_phase_std_threshold = 0.75`
+- `use_local_slab_adaptive_confidence = True`
+- `local_slab_adaptive_confidence_ownership_threshold = 0.01`
+- `use_local_slab_lateral_patch_refinement = True`
+- `local_slab_lateral_patch_count_max = 4`
+- `local_slab_lateral_patch_x_std_threshold = 6.0 * lambda0`
+
+This keeps the public wrapper stable even if the private backend changes its
+own internal defaults later.
 
 ## Minimal Python Usage
 
@@ -69,6 +84,68 @@ response = engine.solve(request)
 print(response.summary.as_dict())
 ```
 
+## Frozen `f-lens-f` Benchmark Helper
+
+The public package also exposes a named request helper for the current frozen
+private benchmark geometry:
+
+```python
+from kernel_solver_engine import KernelSolverEngine, make_frozen_f_lens_f_request
+
+engine = KernelSolverEngine()
+request = make_frozen_f_lens_f_request(preset="external_default")
+response = engine.solve(request)
+```
+
+This helper freezes:
+
+- a symmetric biconvex lens with `D = 50 lambda`, `center_thickness = 10.024 lambda`,
+  `edge_thickness = 3.5 lambda`
+- a Gaussian beam with `waist = 3 lambda`
+- `source -> propagate f -> lens -> propagate f`
+- `source_phase_radius_lambda = None`, meaning the source plane is treated as a
+  Gaussian waist plane rather than a spherical-wave feed
+
+The private spectral-vs-hybrid compare scripts additionally enable the private
+adaptive-`z` and spectral-backbone code paths, but this helper keeps the same
+frozen geometry and source-spacing convention on the public API side.
+
+## Additional Public Benchmark Helpers
+
+The public wrapper also exposes two higher-level request builders that match the
+private benchmark family without exposing the private solver internals:
+
+```python
+from kernel_solver_engine import (
+    make_offaxis_2f_imaging_request,
+    make_plane_wave_focus_request,
+)
+```
+
+- `make_plane_wave_focus_request()`
+  A `D/F ~= 1` symmetric biconvex lens illuminated by a plane wave and sampled
+  one focal length behind the lens.
+- `make_offaxis_2f_imaging_request()`
+  A thick-lens `2f -> 2f` imaging request using an off-axis Gaussian object
+  field (`waist = 1.5 lambda`, `x offset = 6 lambda`) at the object plane.
+
+These helpers stay inside the public request/response layer; they do not expose
+the private spectral or hybrid backbone implementation details.
+
+## Private-Only Validation Boundary
+
+The local private workspace may additionally run deeper validation scripts such
+as:
+
+- spectral-vs-hybrid compare plots
+- flat-slab reflection truth checks
+- local benchmark sweep scripts around the proprietary backbone
+
+Those assets remain private-local only. The public package only exposes the
+request builders and engine wrapper needed to drive the separately installed
+private backend; it does not ship the proprietary solver backbone, private
+diagnostic scripts, or the spectral implementation itself.
+
 ## Validation Gate Usage
 
 ```python
@@ -80,6 +157,35 @@ report = engine.compare_orders(request, candidate_order=2, reference_order=4)
 
 print(report.as_dict())
 ```
+
+## Nonuniform Panorama Rendering
+
+Private-backend diagnostics may save panorama arrays on a nonuniform `z` grid,
+for example when air-side slices, lens slices, and post-lens scans use
+different step sizes. In that case, do not render `z_all_lambda` with `imshow`,
+because `imshow` assumes uniform pixel spacing and can visibly misalign the
+drawn lens outline and field map.
+
+Use the exported helper:
+
+```python
+from kernel_solver_engine import pcolormesh_from_centers
+```
+
+or the example script:
+
+```powershell
+python examples/render_nonuniform_panorama_npz.py --npz path\to\run.npz
+```
+
+The script expects the private diagnostic `.npz` to contain at least:
+
+- `x_lambda`
+- `z_all_lambda`
+- `centerline_ey_xz`
+
+and will overlay `front_curve_lambda`, `back_curve_lambda`, `front_edge_lambda`,
+`back_edge_lambda`, and `lens_radius_lambda` when present.
 
 ## CLI Usage
 

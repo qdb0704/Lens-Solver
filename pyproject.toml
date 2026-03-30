@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kernel-solver-engine"
-version = "0.2.0"
+version = "0.3.3"
 description = "Public interface package for a proprietary finite-lens kernel solver."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,7 @@ classifiers = [
 
 [project.optional-dependencies]
 build = ["build>=1.2"]
+plotting = ["matplotlib>=3.8"]
 
 [project.scripts]
 kernel-solver-engine = "kernel_solver_engine.cli:main"

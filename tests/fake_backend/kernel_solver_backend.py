@@ -75,6 +75,18 @@ class ZSlicedSolverConfig:
     use_lateral_sidewall_trace_projection: bool = True
     use_internal_cavity_correction: bool = True
     cavity_longitudinal_model: str = "multispectral_oblique_slab"
+    sidewall_ordered_split_kind: str = "local_fractional_interface"
+    local_slab_localization_kind: str = "hard_mask"
+    local_slab_response_blend_kind: str = "continuous_thickness_interp"
+    local_slab_response_thickness_alpha: float = 1.0
+    local_slab_response_operator_interp_kind: str = "linear_thickness"
+    local_slab_depth_anchor_count_max: int = 1
+    local_slab_depth_anchor_phase_std_threshold: float = 0.0
+    use_local_slab_adaptive_confidence: bool = False
+    local_slab_adaptive_confidence_ownership_threshold: float = 0.0
+    use_local_slab_lateral_patch_refinement: bool = False
+    local_slab_lateral_patch_count_max: int = 1
+    local_slab_lateral_patch_x_std_threshold: float = 0.0
 
 
 @dataclass(frozen=True)
