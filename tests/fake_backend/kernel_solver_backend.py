@@ -70,8 +70,9 @@ class ZSlicedSolverConfig:
     lens: ZSlicedLensConfig
     fft_convention: FFTConvention = FFTConvention()
     support_policy: str = "propagating_only"
-    ordered_interface_subcell_count: int = 2
-    use_lateral_sidewall_trace_projection: bool = False
+    ordered_interface_subcell_count: int = 4
+    sidewall_ordered_split_kind: str = "local_fractional_interface"
+    use_lateral_sidewall_trace_projection: bool = True
     use_internal_cavity_correction: bool = True
     cavity_longitudinal_model: str = "multispectral_oblique_slab"
     sidewall_ordered_split_kind: str = "local_fractional_interface"

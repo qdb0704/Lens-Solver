@@ -118,6 +118,37 @@ class PublicKernelSolverEngineTests(unittest.TestCase):
         self.assertEqual(backend.module_name, "tests.fake_backend")
         self.assertEqual(backend.adapter_module_name, "tests.fake_backend.kernel_solver_backend")
 
+    def test_engine_pins_validated_sidewall_baseline_when_backend_supports_it(self) -> None:
+        engine = KernelSolverEngine()
+        request = make_large_lens_example_request(preset="external_default")
+        _, _, cfg = engine.build_backend_config(request)
+        self.assertEqual(cfg.ordered_interface_subcell_count, 4)
+        self.assertTrue(cfg.use_lateral_sidewall_trace_projection)
+        self.assertEqual(cfg.sidewall_ordered_split_kind, "none")
+
+    def test_engine_pins_validated_sidewall_baseline_for_non_dataclass_constructor(self) -> None:
+        class NonDataclassConfig:
+            def __init__(
+                self,
+                *,
+                ordered_interface_subcell_count: int,
+                use_lateral_sidewall_trace_projection: bool,
+                sidewall_ordered_split_kind: str = "legacy-default",
+            ) -> None:
+                self.ordered_interface_subcell_count = int(ordered_interface_subcell_count)
+                self.use_lateral_sidewall_trace_projection = bool(use_lateral_sidewall_trace_projection)
+                self.sidewall_ordered_split_kind = str(sidewall_ordered_split_kind)
+
+        merged = _inject_supported_solver_baseline_kwargs(
+            NonDataclassConfig,
+            {
+                "ordered_interface_subcell_count": 4,
+                "use_lateral_sidewall_trace_projection": True,
+            },
+        )
+
+        self.assertEqual(merged["sidewall_ordered_split_kind"], "none")
+
     def test_request_round_trip(self) -> None:
         original = make_large_lens_example_request(preset="projector_advanced")
         rebuilt = request_from_dict(request_to_dict(original))

@@ -279,30 +279,33 @@ class KernelSolverEngine:
         def z_back_profile(r_mat: np.ndarray) -> np.ndarray:
             return z_back_vertex - sag_profile(r_mat)
 
-        cfg_kwargs = dict(
-            x=x,
-            y=y,
-            f0=design.f0_hz,
-            feed=feed,
-            material=backend.MaterialTensor.from_relative(
-                np.eye(3) * float(request.lens.eps_r),
-                np.eye(3) * float(request.lens.mu_r),
+        cfg_kwargs = _inject_supported_solver_baseline_kwargs(
+            backend.ZSlicedSolverConfig,
+            dict(
+                x=x,
+                y=y,
+                f0=design.f0_hz,
+                feed=feed,
+                material=backend.MaterialTensor.from_relative(
+                    np.eye(3) * float(request.lens.eps_r),
+                    np.eye(3) * float(request.lens.mu_r),
+                ),
+                lens=backend.ZSlicedLensConfig(
+                    radius=design.lens_radius,
+                    z_front_profile=z_front_profile,
+                    z_back_profile=z_back_profile,
+                    dz_lens=design.dz_lens,
+                    occupancy_kind="fractional",
+                ),
+                fft_convention=backend.FFTConvention(inverse_input_is_shifted=True),
+                support_policy="propagating_only",
+                ordered_interface_subcell_count=int(request.toggles.ordered_interface_subcell_count),
+                use_lateral_sidewall_trace_projection=bool(request.toggles.use_lateral_sidewall_trace_projection),
+                use_internal_cavity_correction=bool(request.toggles.use_internal_cavity_correction),
+                cavity_longitudinal_model=str(request.toggles.cavity_longitudinal_model),
             ),
-            lens=backend.ZSlicedLensConfig(
-                radius=design.lens_radius,
-                z_front_profile=z_front_profile,
-                z_back_profile=z_back_profile,
-                dz_lens=design.dz_lens,
-                occupancy_kind="fractional",
-            ),
-            fft_convention=backend.FFTConvention(inverse_input_is_shifted=True),
-            support_policy="propagating_only",
-            ordered_interface_subcell_count=int(request.toggles.ordered_interface_subcell_count),
-            use_lateral_sidewall_trace_projection=bool(request.toggles.use_lateral_sidewall_trace_projection),
-            use_internal_cavity_correction=bool(request.toggles.use_internal_cavity_correction),
-            cavity_longitudinal_model=str(request.toggles.cavity_longitudinal_model),
+            lambda0=design.lambda0,
         )
-        cfg_kwargs = _inject_supported_solver_baseline_kwargs(backend.ZSlicedSolverConfig, cfg_kwargs, lambda0=design.lambda0)
         cfg = backend.ZSlicedSolverConfig(**cfg_kwargs)
         return backend, design, cfg
 
