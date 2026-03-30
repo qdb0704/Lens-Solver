@@ -139,12 +139,17 @@ as:
 
 - spectral-vs-hybrid compare plots
 - flat-slab reflection truth checks
+- plane-wave and off-axis `2f -> 2f` spectral transmission benchmark plots
 - local benchmark sweep scripts around the proprietary backbone
 
 Those assets remain private-local only. The public package only exposes the
 request builders and engine wrapper needed to drive the separately installed
 private backend; it does not ship the proprietary solver backbone, private
 diagnostic scripts, or the spectral implementation itself.
+
+Recent private-local milestones also include a spectral GTMM backbone line that
+is benchmarked against the frozen wrapper request family, but that backbone
+remains private and is not distributed through this public package.
 
 ## Validation Gate Usage
 
