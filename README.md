@@ -151,6 +151,13 @@ Recent private-local milestones also include a spectral GTMM backbone line that
 is benchmarked against the frozen wrapper request family, but that backbone
 remains private and is not distributed through this public package.
 
+## Recent Private-Backend Note
+
+A recent private-backend milestone fixed a symmetry regression in the private
+spectral backbone for symmetric source/lens setups. This was an internal
+backend correction only; the public wrapper API and request schema did not
+change.
+
 ## Validation Gate Usage
 
 ```python
